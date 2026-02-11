@@ -15,13 +15,10 @@
 <h2>Charge Calculator</h2>
 
 <label>Charge duration (hours:minutes)</label>
-<input type="text" id="chargeDuration" placeholder="e.g. 1:50">
+<input type="text" id="chargeDuration" placeholder="e.g. 1:00">
 
 <label>Emptying duration (hours:minutes)</label>
-<input type="text" id="emptyDuration" placeholder="e.g. 2:30">
-
-<label>Full charge amount (kg)</label>
-<input type="number" id="fullChargeAmount" placeholder="e.g. 400">
+<input type="text" id="emptyDuration" placeholder="e.g. 1:00">
 
 <label>Last known charge time (HH:MM)</label>
 <input type="text" id="lastTime" placeholder="e.g. 07:50">
@@ -51,55 +48,46 @@ function formatDateTime(date) {
 }
 
 function calculateCharges() {
-  let chargeDur = parseTimeHM(document.getElementById("chargeDuration").value);
-  let emptyDur = parseTimeHM(document.getElementById("emptyDuration").value);
-  let fullCharge = parseFloat(document.getElementById("fullChargeAmount").value);
-  let lastTimeStr = document.getElementById("lastTime").value;
-  let lastNum = parseInt(document.getElementById("lastNumber").value);
-  let targetDateTimeStr = document.getElementById("targetDateTime").value;
+  const chargeDur = parseTimeHM(document.getElementById("chargeDuration").value);
+  const emptyDur = parseTimeHM(document.getElementById("emptyDuration").value);
+  const lastTimeStr = document.getElementById("lastTime").value;
+  const lastNum = parseInt(document.getElementById("lastNumber").value);
+  const targetDateTimeStr = document.getElementById("targetDateTime").value;
 
-  if (!chargeDur || !emptyDur || !fullCharge || !lastTimeStr || isNaN(lastNum) || !targetDateTimeStr) {
+  if (!chargeDur || !emptyDur || !lastTimeStr || isNaN(lastNum) || !targetDateTimeStr) {
     document.getElementById("output").innerHTML = "Please fill all fields correctly.";
     return;
   }
 
   // Parse last known charge time
-  let today = new Date();
-  let [lastH,lastM] = lastTimeStr.split(":").map(Number);
-  let lastChargeDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), lastH, lastM);
+  const today = new Date();
+  const [lastH,lastM] = lastTimeStr.split(":").map(Number);
+  const lastChargeDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), lastH, lastM);
 
   // Parse target date/time
-  let targetDateTime = new Date(targetDateTimeStr);
+  const targetDateTime = new Date(targetDateTimeStr);
 
-  // Last charge start time
-  let lastChargeStart = new Date(targetDateTime.getTime() - (chargeDur + emptyDur)*60000);
+  // Calculate last charge start time
+  const lastChargeStart = new Date(targetDateTime.getTime() - (chargeDur + emptyDur)*60000);
 
-  // Total time in minutes between last known charge and last charge start
-  let totalMinutes = (lastChargeStart - lastChargeDate)/60000;
+  // Total minutes between last known charge and last charge start
+  const totalMinutes = (lastChargeStart - lastChargeDate)/60000;
 
-  // Number of full charges before last
-  let fullChargesNeeded = Math.floor(totalMinutes / chargeDur);
+  // Number of full charges (500 kg) before last charge
+  const fullChargesNeeded = Math.floor(totalMinutes / chargeDur);
 
-  // Fraction for last charge
-  let remainingFraction = (totalMinutes / chargeDur) - fullChargesNeeded;
-  let lastChargeKg = remainingFraction * fullCharge;
-
-  // Build full schedule
-  let schedule = [];
+  // Build schedule for full charges
+  const schedule = [];
   for (let i=1; i<=fullChargesNeeded; i++){
-    let chargeTime = addMinutes(lastChargeDate, i*chargeDur);
-    schedule.push(`Charge ${lastNum + i}: ${formatDateTime(chargeTime)} - ${fullCharge} kg`);
+    const chargeTime = addMinutes(lastChargeDate, i*chargeDur);
+    schedule.push(`Charge ${lastNum + i}: ${formatDateTime(chargeTime)} - 500 kg`);
   }
 
-  // Add last charge
-  schedule.push(`Last charge ${lastNum + fullChargesNeeded + 1}: ${formatDateTime(lastChargeStart)} - ${lastChargeKg.toFixed(1)} kg`);
+  // Last charge amount (can be between 200-500 kg)
+  const remainingMinutes = totalMinutes - fullChargesNeeded*chargeDur;
+  let lastChargeKg = Math.round((remainingMinutes / chargeDur) * 500);
+  if (lastChargeKg < 200) lastChargeKg = 200;  // enforce minimum 200 kg
+  if (lastChargeKg > 500) lastChargeKg = 500;  // enforce maximum 500 kg
 
-  document.getElementById("output").innerHTML = `
-    Total additional charges needed: <b>${fullChargesNeeded + 1}</b><br>
-    Schedule:<br>${schedule.join('<br>')}<br>
-    Line completely empty at: <b>${formatDateTime(targetDateTime)}</b>
-  `;
-}
-</script>
-</body>
-</html>
+  // Add last charge to schedule
+  schedule.push(`Last charge ${lastNum +
