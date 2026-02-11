@@ -59,18 +59,56 @@ function calculateCharges() {
     return;
   }
 
-  // Parse last known charge time
-  const today = new Date();
-  const [lastH,lastM] = lastTimeStr.split(":").map(Number);
-  const lastChargeDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), lastH, lastM);
-
-  // Parse target date/time
+  // Parse target datetime
   const targetDateTime = new Date(targetDateTimeStr);
 
-  // Last charge start = target - empty duration - charge duration
+  // Parse last known charge HH:MM and convert to datetime close to target
+  const [lastH,lastM] = lastTimeStr.split(":").map(Number);
+  let lastChargeDate = new Date(targetDateTime);
+  lastChargeDate.setHours(lastH);
+  lastChargeDate.setMinutes(lastM);
+  lastChargeDate.setSeconds(0);
+  lastChargeDate.setMilliseconds(0);
+
+  // If last charge datetime is after lastChargeStart, go back one day
   const lastChargeStart = new Date(targetDateTime.getTime() - (chargeDur + emptyDur)*60000);
+  if (lastChargeDate > lastChargeStart) {
+    lastChargeDate.setDate(lastChargeDate.getDate() - 1);
+  }
 
   // Total minutes between last known charge and last charge start
   const totalMinutes = (lastChargeStart - lastChargeDate)/60000;
 
   // Number of full charges (500 kg) before last charge
+  let fullChargesNeeded = Math.floor(totalMinutes / chargeDur);
+  if (fullChargesNeeded < 0) fullChargesNeeded = 0;
+
+  // Build schedule for full charges
+  const schedule = [];
+  for (let i=1; i<=fullChargesNeeded; i++){
+    const chargeTime = addMinutes(lastChargeDate, i*chargeDur);
+    schedule.push(`Charge ${lastNum + i}: ${formatDateTime(chargeTime)} - 500 kg`);
+  }
+
+  // Last charge kg
+  let lastChargeKg = 500; // default
+  const remainingMinutes = totalMinutes - fullChargesNeeded*chargeDur;
+  if (remainingMinutes > 0) {
+    lastChargeKg = Math.round((remainingMinutes / chargeDur) * 500);
+    if (lastChargeKg < 200) lastChargeKg = 200;
+    if (lastChargeKg > 500) lastChargeKg = 500;
+  }
+
+  // Add last charge
+  schedule.push(`Last charge ${lastNum + fullChargesNeeded + 1}: ${formatDateTime(lastChargeStart)} - ${lastChargeKg} kg`);
+
+  // Output
+  document.getElementById("output").innerHTML = `
+    Total additional charges needed: <b>${fullChargesNeeded + 1}</b><br>
+    Schedule:<br>${schedule.join('<br>')}<br>
+    Line completely empty at: <b>${formatDateTime(targetDateTime)}</b>
+  `;
+}
+</script>
+</body>
+</html>
