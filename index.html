@@ -82,17 +82,15 @@ function calculateCharges() {
   // Number of full charges needed before last one
   let fullChargesNeeded = Math.floor(totalMinutes / chargeDur);
 
-  // Build schedule
+  // Build schedule for full charges
   let schedule = [];
   for (let i=1; i<=fullChargesNeeded; i++){
-    let time = new Date(lastChargeDate.getTime() + i*chargeDur*60000);
     schedule.push(`Charge ${lastNum + i}: ${formatDayTime(i*chargeDur, lastChargeDate)} - ${fullCharge} kg`);
   }
 
-  // Calculate last charge amount in kg
-  let minutesUsedByFull = fullChargesNeeded * chargeDur;
-  let remainingMinutes = totalMinutes - minutesUsedByFull;
-  let lastChargeKg = (remainingMinutes / chargeDur) * fullCharge;
+  // Calculate fraction for last charge in kg
+  let remainingFraction = (totalMinutes / chargeDur) - fullChargesNeeded;
+  let lastChargeKg = remainingFraction * fullCharge;
 
   // Add last charge to schedule
   schedule.push(`Last charge ${lastNum + fullChargesNeeded + 1}: ${formatDayTime(totalMinutes, lastChargeDate)} - ${lastChargeKg.toFixed(1)} kg`);
