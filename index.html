@@ -35,7 +35,7 @@
 
 <script>
 function parseTimeHM(str) {
-  let [h,m] = str.split(":").map(Number);
+  const [h,m] = str.split(":").map(Number);
   return h*60 + m;
 }
 
@@ -59,54 +59,47 @@ function calculateCharges() {
     return;
   }
 
-  // Parse target datetime
-  const targetDateTime = new Date(targetDateTimeStr);
+  // Target empty time
+  const target = new Date(targetDateTimeStr);
 
-  // Parse last known charge HH:MM and convert to datetime close to target
-  const [lastH,lastM] = lastTimeStr.split(":").map(Number);
-  let lastChargeDate = new Date(targetDateTime);
-  lastChargeDate.setHours(lastH);
-  lastChargeDate.setMinutes(lastM);
-  lastChargeDate.setSeconds(0);
-  lastChargeDate.setMilliseconds(0);
+  // Last charge start
+  const lastChargeStart = new Date(target.getTime() - (chargeDur + emptyDur)*60000);
 
-  // If last charge datetime is after lastChargeStart, go back one day
-  const lastChargeStart = new Date(targetDateTime.getTime() - (chargeDur + emptyDur)*60000);
-  if (lastChargeDate > lastChargeStart) {
-    lastChargeDate.setDate(lastChargeDate.getDate() - 1);
-  }
+  // Last known charge datetime (today or yesterday)
+  const [h,m] = lastTimeStr.split(":").map(Number);
+  let lastChargeDate = new Date(lastChargeStart);
+  lastChargeDate.setHours(h, m, 0, 0);
+  if(lastChargeDate > lastChargeStart) lastChargeDate.setDate(lastChargeDate.getDate()-1);
 
   // Total minutes between last known charge and last charge start
-  const totalMinutes = (lastChargeStart - lastChargeDate)/60000;
+  let totalMinutes = (lastChargeStart - lastChargeDate)/60000;
+  if(totalMinutes < 0) totalMinutes = 0;
 
-  // Number of full charges (500 kg) before last charge
-  let fullChargesNeeded = Math.floor(totalMinutes / chargeDur);
-  if (fullChargesNeeded < 0) fullChargesNeeded = 0;
+  // Full charges before last
+  const fullCharges = Math.floor(totalMinutes / chargeDur);
 
-  // Build schedule for full charges
   const schedule = [];
-  for (let i=1; i<=fullChargesNeeded; i++){
+
+  for(let i=1; i<=fullCharges; i++){
     const chargeTime = addMinutes(lastChargeDate, i*chargeDur);
     schedule.push(`Charge ${lastNum + i}: ${formatDateTime(chargeTime)} - 500 kg`);
   }
 
-  // Last charge kg
-  let lastChargeKg = 500; // default
-  const remainingMinutes = totalMinutes - fullChargesNeeded*chargeDur;
-  if (remainingMinutes > 0) {
-    lastChargeKg = Math.round((remainingMinutes / chargeDur) * 500);
-    if (lastChargeKg < 200) lastChargeKg = 200;
-    if (lastChargeKg > 500) lastChargeKg = 500;
+  // Last charge kg (min 200, max 500)
+  let lastChargeKg = 500;
+  const remaining = totalMinutes - fullCharges*chargeDur;
+  if(remaining > 0) {
+    lastChargeKg = Math.round((remaining / chargeDur) * 500);
+    if(lastChargeKg < 200) lastChargeKg = 200;
+    if(lastChargeKg > 500) lastChargeKg = 500;
   }
 
-  // Add last charge
-  schedule.push(`Last charge ${lastNum + fullChargesNeeded + 1}: ${formatDateTime(lastChargeStart)} - ${lastChargeKg} kg`);
+  schedule.push(`Last charge ${lastNum + fullCharges + 1}: ${formatDateTime(lastChargeStart)} - ${lastChargeKg} kg`);
 
-  // Output
   document.getElementById("output").innerHTML = `
-    Total additional charges needed: <b>${fullChargesNeeded + 1}</b><br>
+    Total additional charges: <b>${fullCharges + 1}</b><br>
     Schedule:<br>${schedule.join('<br>')}<br>
-    Line completely empty at: <b>${formatDateTime(targetDateTime)}</b>
+    Line empty at: <b>${formatDateTime(target)}</b>
   `;
 }
 </script>
