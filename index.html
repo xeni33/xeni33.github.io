@@ -42,11 +42,12 @@ function parseTimeHM(str) {
   return h*60 + m;
 }
 
-function formatDayTime(minutesFromStart, startDate) {
-  let date = new Date(startDate.getTime() + minutesFromStart*60000);
-  let day = date.toLocaleDateString();
-  let time = date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  return `${day} ${time}`;
+function addMinutes(date, minutes) {
+  return new Date(date.getTime() + minutes*60000);
+}
+
+function formatDateTime(date) {
+  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 }
 
 function calculateCharges() {
@@ -62,7 +63,7 @@ function calculateCharges() {
     return;
   }
 
-  // Parse last known charge time as today
+  // Parse last known charge time
   let today = new Date();
   let [lastH,lastM] = lastTimeStr.split(":").map(Number);
   let lastChargeDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), lastH, lastM);
@@ -70,35 +71,33 @@ function calculateCharges() {
   // Parse target date/time
   let targetDateTime = new Date(targetDateTimeStr);
 
-  // Total time for last charge to empty
-  let totalLastChargeTime = chargeDur + emptyDur;
-
   // Last charge start time
-  let lastChargeStart = new Date(targetDateTime.getTime() - totalLastChargeTime*60000);
+  let lastChargeStart = new Date(targetDateTime.getTime() - (chargeDur + emptyDur)*60000);
 
-  // Total minutes between last known charge and last charge start
+  // Total time in minutes between last known charge and last charge start
   let totalMinutes = (lastChargeStart - lastChargeDate)/60000;
 
-  // Number of full charges needed before last one
+  // Number of full charges before last
   let fullChargesNeeded = Math.floor(totalMinutes / chargeDur);
 
-  // Build schedule for full charges
-  let schedule = [];
-  for (let i=1; i<=fullChargesNeeded; i++){
-    schedule.push(`Charge ${lastNum + i}: ${formatDayTime(i*chargeDur, lastChargeDate)} - ${fullCharge} kg`);
-  }
-
-  // Calculate fraction for last charge in kg
+  // Fraction for last charge
   let remainingFraction = (totalMinutes / chargeDur) - fullChargesNeeded;
   let lastChargeKg = remainingFraction * fullCharge;
 
-  // Add last charge to schedule
-  schedule.push(`Last charge ${lastNum + fullChargesNeeded + 1}: ${formatDayTime(totalMinutes, lastChargeDate)} - ${lastChargeKg.toFixed(1)} kg`);
+  // Build full schedule
+  let schedule = [];
+  for (let i=1; i<=fullChargesNeeded; i++){
+    let chargeTime = addMinutes(lastChargeDate, i*chargeDur);
+    schedule.push(`Charge ${lastNum + i}: ${formatDateTime(chargeTime)} - ${fullCharge} kg`);
+  }
+
+  // Add last charge
+  schedule.push(`Last charge ${lastNum + fullChargesNeeded + 1}: ${formatDateTime(lastChargeStart)} - ${lastChargeKg.toFixed(1)} kg`);
 
   document.getElementById("output").innerHTML = `
     Total additional charges needed: <b>${fullChargesNeeded + 1}</b><br>
     Schedule:<br>${schedule.join('<br>')}<br>
-    Line completely empty at: <b>${targetDateTime.toLocaleString()}</b>
+    Line completely empty at: <b>${formatDateTime(targetDateTime)}</b>
   `;
 }
 </script>
