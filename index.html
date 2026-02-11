@@ -62,10 +62,10 @@ function calculateCharges() {
   // Target empty time
   const target = new Date(targetDateTimeStr);
 
-  // Last charge start
+  // Last charge start = target - chargeDur - emptyDur
   const lastChargeStart = new Date(target.getTime() - (chargeDur + emptyDur)*60000);
 
-  // Last known charge datetime (today or yesterday)
+  // Last known charge datetime
   const [h,m] = lastTimeStr.split(":").map(Number);
   let lastChargeDate = new Date(lastChargeStart);
   lastChargeDate.setHours(h, m, 0, 0);
@@ -85,7 +85,7 @@ function calculateCharges() {
     schedule.push(`Charge ${lastNum + i}: ${formatDateTime(chargeTime)} - 500 kg`);
   }
 
-  // Last charge kg (min 200, max 500)
+  // Last charge kg
   let lastChargeKg = 500;
   const remaining = totalMinutes - fullCharges*chargeDur;
   if(remaining > 0) {
@@ -94,12 +94,16 @@ function calculateCharges() {
     if(lastChargeKg > 500) lastChargeKg = 500;
   }
 
-  schedule.push(`Last charge ${lastNum + fullCharges + 1}: ${formatDateTime(lastChargeStart)} - ${lastChargeKg} kg`);
+  // Leer Melder = lastChargeStart + chargeDur
+  const leerMelder = addMinutes(lastChargeStart, chargeDur);
+
+  // Add last charge with Leer Melder
+  schedule.push(`Last charge ${lastNum + fullCharges + 1}: ${formatDateTime(lastChargeStart)} - ${lastChargeKg} kg (Leer Melder at ${formatDateTime(leerMelder)})`);
 
   document.getElementById("output").innerHTML = `
     Total additional charges: <b>${fullCharges + 1}</b><br>
     Schedule:<br>${schedule.join('<br>')}<br>
-    Line empty at: <b>${formatDateTime(target)}</b>
+    Line completely empty at: <b>${formatDateTime(target)}</b>
   `;
 }
 </script>
