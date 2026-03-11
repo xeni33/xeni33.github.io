@@ -1,111 +1,134 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Charge Calculator</title>
+
 <style>
-  body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
-  input, button { padding: 8px; margin: 5px 0; width: 100%; }
-  label { font-weight: bold; display: block; margin-top: 10px; }
-  .output { margin-top: 20px; padding: 10px; background: #fff; border-radius: 5px; }
+body{
+font-family:Arial;
+padding:20px;
+background:#f2f2f2;
+}
+
+input,button{
+width:100%;
+padding:8px;
+margin-top:5px;
+margin-bottom:10px;
+}
+
+.output{
+background:white;
+padding:15px;
+border-radius:6px;
+margin-top:20px;
+}
 </style>
 </head>
+
 <body>
+
 <h2>Charge Calculator</h2>
 
-<label>Charge duration (hours:minutes)</label>
-<input type="text" id="chargeDuration" placeholder="e.g. 1:00">
+<label>Charge duration (hh:mm)</label>
+<input id="chargeDuration" placeholder="1:50">
 
-<label>Emptying duration (hours:minutes)</label>
-<input type="text" id="emptyDuration" placeholder="e.g. 1:00">
+<label>Empty duration (hh:mm)</label>
+<input id="emptyDuration" placeholder="2:30">
 
-<label>Last known charge time (HH:MM)</label>
-<input type="text" id="lastTime" placeholder="e.g. 07:50">
+<label>Last charge time today (hh:mm)</label>
+<input id="lastTime" placeholder="07:50">
 
 <label>Last charge number</label>
-<input type="number" id="lastNumber" placeholder="e.g. 28">
+<input id="lastNumber" type="number" placeholder="28">
 
-<label>Target empty date and time</label>
-<input type="datetime-local" id="targetDateTime">
+<label>Target empty date & time</label>
+<input id="targetDateTime" type="datetime-local">
 
-<button onclick="calculateCharges()">Calculate</button>
+<button onclick="calculate()">Calculate</button>
 
 <div class="output" id="output"></div>
 
 <script>
-function parseTimeHM(str) {
-  const [h,m] = str.split(":").map(Number);
-  return h*60 + m;
+
+function parseHM(text){
+let p=text.split(":");
+return parseInt(p[0])*60+parseInt(p[1]);
 }
 
-function addMinutes(date, minutes) {
-  return new Date(date.getTime() + minutes*60000);
+function addMinutes(date,min){
+return new Date(date.getTime()+min*60000);
 }
 
-function formatDateTime(date) {
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+function format(date){
+return date.toLocaleDateString()+" "+date.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
 }
 
-function calculateCharges() {
-  const chargeDur = parseTimeHM(document.getElementById("chargeDuration").value);
-  const emptyDur = parseTimeHM(document.getElementById("emptyDuration").value);
-  const lastTimeStr = document.getElementById("lastTime").value;
-  const lastNum = parseInt(document.getElementById("lastNumber").value);
-  const targetDateTimeStr = document.getElementById("targetDateTime").value;
+function calculate(){
 
-  if (!chargeDur || !emptyDur || !lastTimeStr || isNaN(lastNum) || !targetDateTimeStr) {
-    document.getElementById("output").innerHTML = "Please fill all fields correctly.";
-    return;
-  }
+let chargeDur=parseHM(document.getElementById("chargeDuration").value);
+let emptyDur=parseHM(document.getElementById("emptyDuration").value);
+let lastTime=document.getElementById("lastTime").value;
+let lastNum=parseInt(document.getElementById("lastNumber").value);
+let target=new Date(document.getElementById("targetDateTime").value);
 
-  // Target empty time
-  const target = new Date(targetDateTimeStr);
-
-  // Last charge start = target - chargeDur - emptyDur
-  const lastChargeStart = new Date(target.getTime() - (chargeDur + emptyDur)*60000);
-
-  // Last known charge datetime
-  const [h,m] = lastTimeStr.split(":").map(Number);
-  let lastChargeDate = new Date(lastChargeStart);
-  lastChargeDate.setHours(h, m, 0, 0);
-  if(lastChargeDate > lastChargeStart) lastChargeDate.setDate(lastChargeDate.getDate()-1);
-
-  // Total minutes between last known charge and last charge start
-  let totalMinutes = (lastChargeStart - lastChargeDate)/60000;
-  if(totalMinutes < 0) totalMinutes = 0;
-
-  // Full charges before last
-  const fullCharges = Math.floor(totalMinutes / chargeDur);
-
-  const schedule = [];
-
-  for(let i=1; i<=fullCharges; i++){
-    const chargeTime = addMinutes(lastChargeDate, i*chargeDur);
-    schedule.push(`Charge ${lastNum + i}: ${formatDateTime(chargeTime)} - 500 kg`);
-  }
-
-  // Last charge kg
-  let lastChargeKg = 500;
-  const remaining = totalMinutes - fullCharges*chargeDur;
-  if(remaining > 0) {
-    lastChargeKg = Math.round((remaining / chargeDur) * 500);
-    if(lastChargeKg < 200) lastChargeKg = 200;
-    if(lastChargeKg > 500) lastChargeKg = 500;
-  }
-
-  // Leer Melder = lastChargeStart + chargeDur
-  const leerMelder = addMinutes(lastChargeStart, chargeDur);
-
-  // Add last charge with Leer Melder
-  schedule.push(`Last charge ${lastNum + fullCharges + 1}: ${formatDateTime(lastChargeStart)} - ${lastChargeKg} kg (Leer Melder at ${formatDateTime(leerMelder)})`);
-
-  document.getElementById("output").innerHTML = `
-    Total additional charges: <b>${fullCharges + 1}</b><br>
-    Schedule:<br>${schedule.join('<br>')}<br>
-    Line completely empty at: <b>${formatDateTime(target)}</b>
-  `;
+if(!chargeDur||!emptyDur||!lastTime||!lastNum||!target){
+document.getElementById("output").innerHTML="Fill all fields.";
+return;
 }
-</script>
-</body>
-</html>
+
+/* last charge start */
+let lastChargeStart=new Date(target.getTime()-(chargeDur+emptyDur)*60000);
+
+/* last known charge TODAY */
+let now=new Date();
+let hm=lastTime.split(":");
+
+let lastChargeDate=new Date();
+lastChargeDate.setHours(parseInt(hm[0]),parseInt(hm[1]),0,0);
+
+if(lastChargeDate>now){
+lastChargeDate.setDate(lastChargeDate.getDate()-1);
+}
+
+/* time difference */
+let diff=(lastChargeStart-lastChargeDate)/60000;
+if(diff<0) diff=0;
+
+let fullCharges=Math.floor(diff/chargeDur);
+
+let schedule=[];
+
+for(let i=1;i<=fullCharges;i++){
+let t=addMinutes(lastChargeDate,i*chargeDur);
+schedule.push("Charge "+(lastNum+i)+": "+format(t)+" — 500 kg");
+}
+
+/* last charge kg */
+let remaining=diff-fullCharges*chargeDur;
+let lastKg=500;
+
+if(remaining>0){
+lastKg=Math.round((remaining/chargeDur)*500);
+if(lastKg<200) lastKg=200;
+if(lastKg>500) lastKg=500;
+}
+
+/* leer melder */
+let leerMelder=addMinutes(lastChargeStart,chargeDur);
+
+schedule.push(
+"Last Charge "+(lastNum+fullCharges+1)+
+": "+format(lastChargeStart)+
+" — "+lastKg+" kg"+
+"<br>Leer Melder: "+format(leerMelder)
+);
+
+document.getElementById("output").innerHTML=
+
+"Total new charges: <b>"+(fullCharges+1)+"</b><br><br>"+
+
+schedule.join("<br>")+"<br><br>"+
+
+"Line completely empty: <b>"+format(target)+"</b
