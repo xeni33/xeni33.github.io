@@ -71,17 +71,17 @@ let chargeDur=parseHM(document.getElementById("chargeDuration").value);
 let emptyDur=parseHM(document.getElementById("emptyDuration").value);
 let lastTime=document.getElementById("lastTime").value;
 let lastNum=parseInt(document.getElementById("lastNumber").value);
-let target=new Date(document.getElementById("targetDateTime").value);
+let targetStr=document.getElementById("targetDateTime").value;
 
-if(!chargeDur||!emptyDur||!lastTime||!lastNum||!target){
-document.getElementById("output").innerHTML="Fill all fields.";
+if(!targetStr){
+document.getElementById("output").innerHTML="Please choose a target date.";
 return;
 }
 
-/* last charge start */
+let target=new Date(targetStr);
+
 let lastChargeStart=new Date(target.getTime()-(chargeDur+emptyDur)*60000);
 
-/* last known charge TODAY */
 let now=new Date();
 let hm=lastTime.split(":");
 
@@ -92,7 +92,6 @@ if(lastChargeDate>now){
 lastChargeDate.setDate(lastChargeDate.getDate()-1);
 }
 
-/* time difference */
 let diff=(lastChargeStart-lastChargeDate)/60000;
 if(diff<0) diff=0;
 
@@ -105,7 +104,6 @@ let t=addMinutes(lastChargeDate,i*chargeDur);
 schedule.push("Charge "+(lastNum+i)+": "+format(t)+" — 500 kg");
 }
 
-/* last charge kg */
 let remaining=diff-fullCharges*chargeDur;
 let lastKg=500;
 
@@ -115,7 +113,6 @@ if(lastKg<200) lastKg=200;
 if(lastKg>500) lastKg=500;
 }
 
-/* leer melder */
 let leerMelder=addMinutes(lastChargeStart,chargeDur);
 
 schedule.push(
@@ -131,4 +128,11 @@ document.getElementById("output").innerHTML=
 
 schedule.join("<br>")+"<br><br>"+
 
-"Line completely empty: <b>"+format(target)+"</b
+"Line completely empty: <b>"+format(target)+"</b>";
+
+}
+
+</script>
+
+</body>
+</html>
